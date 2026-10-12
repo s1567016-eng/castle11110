@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>文字地下城：冒險開始</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #10131b;
+      --panel: #1a2030;
+      --border: #343e53;
+      --text: #edf2ff;
+      --muted: #a0acc4;
+      --accent: #72e5b1;
+      --danger: #ff7777;
+      --gold: #ffd166;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      padding: 24px 14px 40px;
+      background: radial-gradient(ellipse at top, #222d43 0%, var(--bg) 60%);
+      color: var(--text);
+      font-family: system-ui, -apple-system, "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    }
+
+    .game { width: min(100%, 760px); margin: 0 auto; }
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(25px, 5vw, 36px);
+      text-align: center;
+      letter-spacing: 2px;
+    }
+    .subtitle { margin: 0 0 22px; text-align: center; color: var(--muted); font-size: 14px; }
+    .panel {
+      padding: 18px;
+      margin-bottom: 14px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: var(--panel);
+      box-shadow: 0 12px 30px #0003;
+    }
+    .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; }
+    .stat { padding: 10px 8px; border-radius: 10px; text-align: center; background: #111725; border: 1px solid #30394d; }
+    .stat-label { display: block; color: var(--muted); font-size: 12px; margin-bottom: 4px; }
+    .stat-value { font-size: 19px; font-weight: 750; }
+    .map-wrap { width: 100%; overflow-x: auto; border-radius: 12px; background: #0d111a; border: 1px solid #343d50; padding: 12px 6px; scrollbar-width: thin; }
+    #map {
+      display: block; width: max-content; min-width: 100%; margin: 0 auto;
+      white-space: pre; text-align: center;
+      font-family: "Cascadia Mono", "Consolas", "Courier New", monospace;
+      font-size: clamp(12px, 2.65vw, 20px); font-weight: 700; line-height: 1.48;
+      letter-spacing: 0; user-select: none;
+    }
+    .wall { color: #65738e; }
+    .floor { color: #343e52; }
+    .player {
+      color: #ff0000;
+      animation: rainbow 2s linear infinite;
+      font-weight: 900;
+      text-shadow: 0 0 8px currentColor;
+    }
+    @keyframes rainbow {
+      0%   { color: #ff0000; }
+      16%  { color: #ff8800; }
+      33%  { color: #ffff00; }
+      50%  { color: #00ff66; }
+      66%  { color: #00ccff; }
+      83%  { color: #bb66ff; }
+      100% { color: #ff0000; }
+    }
+    .enemy { color: var(--danger); }
+    .exit { color: var(--gold); }
+    .spring { color: #55d9ff; text-shadow: 0 0 8px #55d9ff; }
+    .legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 14px; font-size: 13px; color: var(--muted); }
+    .legend strong { font-family: monospace; font-size: 16px; }
+    .message {
+      min-height: 50px; display: flex; align-items: center; justify-content: center;
+      text-align: center; padding: 12px; border-radius: 10px; background: #111725;
+      color: var(--accent); font-weight: 600; line-height: 1.6; margin-bottom: 14px;
+    }
+    .message.danger { color: var(--danger); }
+    .message.win { color: var(--gold); }
+    .controls {
+      display: grid; grid-template-columns: repeat(3, 64px); grid-template-rows: repeat(2, 56px);
+      gap: 8px; justify-content: center; margin: 8px auto 18px;
+    }
+    button {
+      font: inherit; color: var(--text); background: #29354b; border: 1px solid #455571;
+      border-radius: 12px; cursor: pointer; touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent; transition: background 0.12s, transform 0.08s;
+    }
+    button:hover { background: #394a65; }
+    button:active { transform: scale(0.95); background: #4b607f; }
+    button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+    .direction { font-size: 23px; font-weight: 800; }
+    #up { grid-column: 2; grid-row: 1; }
+    #left { grid-column: 1; grid-row: 2; }
+    #down { grid-column: 2; grid-row: 2; }
+    #right { grid-column: 3; grid-row: 2; }
+    .actions { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+    .action-button { min-height: 44px; padding: 10px 18px; font-weight: 700; }
+    .primary { color: #0e1a17; background: var(--accent); border-color: var(--accent); }
+    .primary:hover { background: #9af1cb; }
+    .instructions { color: var(--muted); font-size: 14px; line-height: 1.9; }
+    .instructions h2 { color: var(--text); font-size: 17px; margin: 0 0 8px; }
+    .instructions p { margin: 5px 0; }
+    kbd { display: inline-block; padding: 1px 6px; border: 1px solid #46536b; border-radius: 5px; background: #101725; color: var(--text); font-family: monospace; font-size: 13px; }
+    @media (max-width: 420px) {
+      body { padding: 16px 8px 28px; }
+      .panel { padding: 12px 8px; }
+      .controls { grid-template-columns: repeat(3, 70px); grid-template-rows: repeat(2, 58px); }
+      .map-wrap { padding: 8px 2px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="game">
+    <h1>⚔ 文字地下城</h1>
+    <p class="subtitle">DUNGEON CRAWLER · TURN-BASED ADVENTURE</p>
+
+    <section class="panel" aria-label="遊戲狀態">
+      <div class="stats" style="grid-template-columns: repeat(4, minmax(0, 1fr));">
+        <div class="stat"><span class="stat-label">生命值 HP</span><span class="stat-value" id="hp">❤️ 5 / 5</span></div>
+        <div class="stat"><span class="stat-label">回合數</span><span class="stat-value" id="turn">0</span></div>
+        <div class="stat"><span class="stat-label">擊敗敵人</span><span class="stat-value" id="kills">0</span></div>
+        <div class="stat"><span class="stat-label">樓層</span><span class="stat-value" id="level">1 / 3</span></div>
+      </div>
+      <div class="map-wrap"><pre id="map" role="img" aria-label="地下城文字地圖"></pre></div>
+      <div class="legend" aria-label="地圖符號說明">
+        <span><strong style="color:#72e5b1">@</strong> 玩家</span>
+        <span><strong style="color:#65738e">#</strong> 牆壁</span>
+        <span><strong style="color:#ff7777">E</strong> 敵人</span>
+        <span><strong style="color:#ffd166">X</strong> 出口</span>
+        <span><strong style="color:#55d9ff">H</strong> 治療泉水</span>
+        <span><strong style="color:#343e52">.</strong> 地板</span>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div id="message" class="message" role="status" aria-live="polite">冒險開始！找到出口 X，避開敵人！</div>
+      <div class="controls" aria-label="觸控方向控制">
+        <button id="up" class="direction" aria-label="向上移動">▲</button>
+        <button id="left" class="direction" aria-label="向左移動">◀</button>
+        <button id="down" class="direction" aria-label="向下移動">▼</button>
+        <button id="right" class="direction" aria-label="向右移動">▶</button>
+      </div>
+      <div class="actions"><button id="restart" class="action-button primary">↻ 重新開始</button></div>
+    </section>
+
+    <section class="panel instructions">
+      <h2>📜 冒險規則</h2>
+      <p>• 使用 <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> 或方向鍵移動。</p>
+      <p>• 共 3 層，越往下敵人越多、地形越複雜。</p>
+      <p>• 每次成功移動後，敵人也會行動一回合。</p>
+      <p>• 撞到牆壁不會移動，也不會消耗回合。</p>
+      <p>• 碰到敵人會造成 1 點傷害，並擊敗該敵人。</p>
+      <p>• 敵人每回合會嘗試接近玩家；敵人碰到你也會造成傷害。</p>
+      <p>• 找到出口 <strong style="color:#ffd166">X</strong> 前往下一層；通過第 3 層即可獲勝。</p>
+      <p>• 踩上治療泉水 <strong style="color:#55d9ff">H</strong> 可將 HP 回滿，每座泉水只能使用一次。</p>
+    </section>
+  </main>
+
+  <script>
+    "use strict";
+
+    const LEVEL_MAPS = [
+      [
+        "#################",
+        "#@....#.........#",
+        "#.##..#.#######.#",
+        "#....##.....#...#",
+        "####....###.#.###",
+        "#......#...#....#",
+        "#.####.#.#.####.#",
+        "#....#...#......#",
+        "#.##.#####.##...#",
+        "#....E.H..E....X#",
+        "#################"
+      ],
+      [
+        "#################",
+        "#@...#......#...#",
+        "#.##.#.####.#.#.#",
+        "#....#....#...#.#",
+        "####.####.###.#.#",
+        "#....E..#.....#.#",
+        "#.######.#####..#",
+        "#......#...H....#",
+        "#.####...##.###.#",
+        "#...E....E.....X#",
+        "#################"
+      ],
+      [
+        "#################",
+        "#@..#.....#.....#",
+        "##..#.###.#.###.#",
+        "#...#...#.#...#.#",
+        "#.#####.#.###.#.#",
+        "#...E...#...#...#",
+        "#.#######.#.###.#",
+        "#.....H...#...E.#",
+        "#.###########.#.#",
+        "#....E........X#",
+        "#################"
+      ]
+    ];
+
+    let MAP_TEMPLATE = LEVEL_MAPS[0];
+
+    const DIRECTIONS = {
+      w: { x: 0, y: -1 },
+      a: { x: -1, y: 0 },
+      s: { x: 0, y: 1 },
+      d: { x: 1, y: 0 },
+      ArrowUp: { x: 0, y: -1 },
+      ArrowLeft: { x: -1, y: 0 },
+      ArrowDown: { x: 0, y: 1 },
+      ArrowRight: { x: 1, y: 0 }
+    };
+
+    const $ = (id) => document.getElementById(id);
+    let walls, enemies, player, exit, springs, hp, turns, kills, gameOver, won, levelIndex;
+
+    function position(x, y) { return { x, y }; }
+    function samePosition(a, b) { return a.x === b.x && a.y === b.y; }
+    function keyOf(pos) { return pos.x + "," + pos.y; }
+    function isWall(x, y) { return walls.has(keyOf(position(x, y))); }
+    function insideMap(x, y) {
+      return y >= 0 && y < MAP_TEMPLATE.length && x >= 0 && x < MAP_TEMPLATE[0].length;
+    }
+    function enemyAt(x, y) {
+      return enemies.find(enemy => enemy.alive && enemy.x === x && enemy.y === y);
+    }
+
+    function initializeGame() {
+      levelIndex = 0;
+      hp = 5;
+      turns = 0;
+      kills = 0;
+      gameOver = false;
+      won = false;
+      initializeLevel(true);
+    }
+
+    function initializeLevel(resetHp) {
+      MAP_TEMPLATE = LEVEL_MAPS[levelIndex];
+      walls = new Set();
+      enemies = [];
+      springs = new Set();
+      player = position(1, 1);
+      exit = position(15, 9);
+      if (resetHp) hp = 5;
+      gameOver = false;
+
+      MAP_TEMPLATE.forEach((line, y) => {
+        for (let x = 0; x < line.length; x++) {
+          const tile = line[x];
+          if (tile === "#") walls.add(keyOf(position(x, y)));
+          else if (tile === "@") player = position(x, y);
+          else if (tile === "X") exit = position(x, y);
+          else if (tile === "E") enemies.push({ x, y, alive: true });
+          else if (tile === "H") springs.add(keyOf(position(x, y)));
+        }
+      });
+
+      setMessage(
+        "第 " + (levelIndex + 1) + " 層：找到出口 X，善用治療泉水 H！",
+        ""
+      );
+      render();
+    }
+
+    function setMessage(text, type) {
+      const el = $("message");
+      el.textContent = text;
+      el.className = "message" + (type ? " " + type : "");
+    }
+
+    function render() {
+      let output = "";
+      for (let y = 0; y < MAP_TEMPLATE.length; y++) {
+        for (let x = 0; x < MAP_TEMPLATE[y].length; x++) {
+          let symbol = ".";
+          let cssClass = "floor";
+          if (isWall(x, y)) { symbol = "#"; cssClass = "wall"; }
+          else if (samePosition(player, position(x, y))) { symbol = "@"; cssClass = "player"; }
+          else if (samePosition(exit, position(x, y))) { symbol = "X"; cssClass = "exit"; }
+          else if (enemyAt(x, y)) { symbol = "E"; cssClass = "enemy"; }
+          else if (springs.has(keyOf(position(x, y)))) { symbol = "H"; cssClass = "spring"; }
+          output += '<span class="' + cssClass + '">' + symbol + "</span>";
+        }
+        if (y < MAP_TEMPLATE.length - 1) output += "\n";
+      }
+
+      $("map").innerHTML = output;
+      $("hp").textContent = "❤️ " + hp + " / 5";
+      $("turn").textContent = String(turns);
+      $("kills").textContent = String(kills);
+      $("level").textContent = (levelIndex + 1) + " / " + LEVEL_MAPS.length;
+
+      ["up", "down", "left", "right"].forEach(id => {
+        $(id).disabled = gameOver;
+        $(id).style.opacity = gameOver ? "0.45" : "1";
+      });
+    }
+
+    function tryMove(dx, dy) {
+      if (gameOver) return;
+      const nx = player.x + dx;
+      const ny = player.y + dy;
+
+      if (!insideMap(nx, ny) || isWall(nx, ny)) {
+        setMessage("前方是牆壁！換個方向試試。", "");
+        return;
+      }
+
+      const enemy = enemyAt(nx, ny);
+      if (enemy) {
+        hp--;
+        enemy.alive = false;
+        kills++;
+        turns++;
+
+        if (hp <= 0) {
+          hp = 0;
+          gameOver = true;
+          setMessage("你在戰鬥中倒下了！點擊重新開始再試一次。", "danger");
+          render();
+          return;
+        }
+
+        setMessage("你擊敗了一隻敵人！受到 1 點傷害。", "danger");
+        moveEnemies();
+        checkGameState();
+        render();
+        return;
+      }
+
+      player.x = nx;
+      player.y = ny;
+      turns++;
+
+      if (samePosition(player, exit)) {
+        if (levelIndex < LEVEL_MAPS.length - 1) {
+          levelIndex++;
+          setMessage("成功通過本層！正在進入下一層……", "win");
+          initializeLevel(false);
+          return;
+        }
+
+        won = true;
+        gameOver = true;
+        setMessage("🏆 勝利！你通關全部 3 層，共走了 " + turns +
+          " 回合，擊敗 " + kills + " 隻敵人！", "win");
+        render();
+        return;
+      }
+
+      // 治療泉水：踩上去立即回滿 HP，使用後泉水消失。
+      const springKey = keyOf(player);
+      if (springs.has(springKey)) {
+        springs.delete(springKey);
+        const restored = 5 - hp;
+        hp = 5;
+        setMessage(
+          restored > 0
+            ? "💧 治療泉水恢復了 " + restored + " 點 HP！生命值已回滿。"
+            : "💧 你找到治療泉水！目前 HP 已滿，泉水仍然消失了。",
+          ""
+        );
+      }
+
+      moveEnemies();
+      checkGameState();
+      render();
+    }
+
+    function moveEnemies() {
+      for (const enemy of enemies) {
+        if (!enemy.alive || gameOver) continue;
+
+        const distance = Math.abs(player.x - enemy.x) + Math.abs(player.y - enemy.y);
+        if (distance === 1) {
+          hp--;
+          setMessage("敵人攻擊了你！失去 1 點生命值。", "danger");
+          if (hp <= 0) {
+            hp = 0;
+            gameOver = true;
+            setMessage("💀 你被敵人擊倒了！重新開始再挑戰吧。", "danger");
+          }
+          continue;
+        }
+
+        const candidates = [
+          { x: 0, y: -1 },
+          { x: -1, y: 0 },
+          { x: 0, y: 1 },
+          { x: 1, y: 0 }
+        ];
+
+        candidates.sort((a, b) => {
+          const da = Math.abs(player.x - (enemy.x + a.x)) + Math.abs(player.y - (enemy.y + a.y));
+          const db = Math.abs(player.x - (enemy.x + b.x)) + Math.abs(player.y - (enemy.y + b.y));
+          return da - db;
+        });
+
+        for (const dir of candidates) {
+          const nx = enemy.x + dir.x;
+          const ny = enemy.y + dir.y;
+          if (!insideMap(nx, ny) || isWall(nx, ny)) continue;
+          if (nx === player.x && ny === player.y) continue;
+          if (enemyAt(nx, ny)) continue;
+          enemy.x = nx;
+          enemy.y = ny;
+          break;
+        }
+      }
+    }
+
+    function checkGameState() {
+      if (hp <= 0) {
+        hp = 0;
+        gameOver = true;
+        setMessage("💀 你的生命值歸零！點擊重新開始再挑戰。", "danger");
+      }
+    }
+
+    function handleKey(event) {
+      const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
+      const direction = DIRECTIONS[key];
+      if (!direction) return;
+      event.preventDefault();
+      tryMove(direction.x, direction.y);
+    }
+
+    document.addEventListener("keydown", handleKey);
+    $("up").addEventListener("click", () => tryMove(0, -1));
+    $("down").addEventListener("click", () => tryMove(0, 1));
+    $("left").addEventListener("click", () => tryMove(-1, 0));
+    $("right").addEventListener("click", () => tryMove(1, 0));
+    $("restart").addEventListener("click", initializeGame);
+
+    initializeGame();
+  </script>
+</body>
+</html>
